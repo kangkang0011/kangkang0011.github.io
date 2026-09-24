@@ -68,12 +68,6 @@
     results.forEach(function (r) {
       r.isNew = S.own(state, r.item.id);
     });
-    if (times === 10) state.stats.tenPulls += 1;
-    if (times === 1) state.stats.singlePulls += 1;
-    const fivesInBatch = results.filter(function (r) {
-      return r.rarity === 5;
-    }).length;
-    if (fivesInBatch > state.stats.maxFiveInTen) state.stats.maxFiveInTen = fivesInBatch;
     const unlocked = A.check(state);
     persist();
     refresh();
@@ -367,6 +361,7 @@
   function init() {
     const gained = S.claimMonthly(state);
     bind();
+    if (window.Fish) window.Fish.spawn(document.getElementById('bgFish'), 12);
     window.Sound.setEnabled(state.sound !== false);
     const unlockOnce = function () {
       window.Sound.unlock();

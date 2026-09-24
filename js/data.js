@@ -296,7 +296,7 @@ window.GameData = (function () {
   };
 
   const CONFIG = {
-    version: '1.1.2',
+    version: '1.1.4',
     title: '不想上班',
     subtitle: '打工人抽卡模拟器',
     currencyName: '工资',
@@ -324,8 +324,8 @@ window.GameData = (function () {
     { id: 'ach_five_10', group: '出金', name: '五星星空', desc: '累计获得 10 个五星', metric: 'fiveCount', target: 10, points: 20, reward: 1600 },
     { id: 'ach_double_five', group: '出金', name: '双黄蛋', desc: '一次十连中出现 2 个五星', metric: 'maxFiveInTen', target: 2, points: 30, reward: 6480 },
     { id: 'ach_early_five', group: '出金', name: '欧皇附体', desc: '在 30 抽以内获得五星', metric: 'bestPity', target: 30, op: 'lte', points: 20, reward: 1600 },
-    { id: 'ach_hard_pity', group: '出金', name: '保底之神', desc: '在第 90 抽触发硬保底', metric: 'hardPityCount', target: 1, points: 20, reward: 1600 },
-    { id: 'ach_lose_streak', group: '出金', name: '非酋的尊严', desc: '连续 3 个五星都不是 UP', metric: 'maxLoseStreak', target: 3, points: 20, reward: 1600 },
+    { id: 'ach_hard_pity', group: '出金', name: '保底之神', desc: '在第 80 抽之后才获得五星', metric: 'latePityCount', target: 1, points: 20, reward: 1600 },
+    { id: 'ach_lose_streak', group: '出金', name: '非酋的尊严', desc: '累计 3 次五星都不是 UP', metric: 'lostFifties', target: 3, points: 20, reward: 1600 },
     { id: 'ach_up_first', group: '出金', name: '命中注定', desc: '获得 UP 限定五星', metric: 'upFiveCount', target: 1, points: 10, reward: 320 },
 
     { id: 'ach_first_four', group: '收集', name: '紫气东来', desc: '获得第一个四星', metric: 'fourCount', target: 1, points: 5, reward: 160 },
@@ -341,6 +341,14 @@ window.GameData = (function () {
     { id: 'ach_topup_648', group: '资源', name: '氪金玩家', desc: '模拟充值累计 648 元', metric: 'topupTotal', target: 648, points: 20, reward: 1600 },
     { id: 'ach_monthly', group: '资源', name: '月卡党', desc: '开通打工人月卡', metric: 'monthlyActive', target: 1, points: 10, reward: 320 },
     { id: 'ach_broke', group: '资源', name: '身无分文', desc: '余额不足一次单抽', metric: 'currencyLt160', target: 1, points: 5, reward: 160 },
+
+    // 隐藏成就：未达成前在面板里只显示「???」，不透露条件
+    { id: 'ach_hidden_triple', group: '隐藏', hidden: true, name: '三黄蛋', desc: '一次十连中出现 3 个五星', metric: 'maxFiveInTen', target: 3, points: 50, reward: 12960 },
+    { id: 'ach_hidden_firstpull', group: '隐藏', hidden: true, name: '一发入魂', desc: '在 5 抽以内获得五星', metric: 'bestPity', target: 5, op: 'lte', points: 30, reward: 6480 },
+    { id: 'ach_hidden_loser', group: '隐藏', hidden: true, name: '非酋之王', desc: '累计 10 次五星都不是 UP', metric: 'lostFifties', target: 10, points: 30, reward: 6480 },
+    { id: 'ach_hidden_oneday', group: '隐藏', hidden: true, name: '摸鱼的一天', desc: '在同一天里抽卡 100 次', metric: 'maxDayPulls', target: 100, points: 20, reward: 1600 },
+    { id: 'ach_hidden_night', group: '隐藏', hidden: true, name: '深夜打工人', desc: '在凌晨 0 点到 5 点之间抽卡', metric: 'nightPulls', target: 1, points: 15, reward: 960 },
+    { id: 'ach_hidden_slacker', group: '隐藏', hidden: true, name: '摆烂到底', desc: '累计点「上个班」50 次', metric: 'workCount', target: 50, points: 20, reward: 3200 },
   ];
 
   const ALL = FIVE.concat(FOUR, THREE);

@@ -121,6 +121,93 @@ button {
   }
 }
 
+/* ---------- 背景鱼群 ---------- */
+
+.bg-fish {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fish {
+  position: absolute;
+  top: var(--top, 50%);
+  left: 0;
+  width: var(--size, 80px);
+  opacity: var(--op, 0.35);
+  animation: fishSwim var(--dur, 30s) linear var(--delay, 0s) infinite;
+  will-change: transform;
+}
+
+.fish.left {
+  animation-name: fishSwimLeft;
+}
+
+.fish-bob {
+  animation: fishBob var(--bob, 3.6s) ease-in-out infinite;
+}
+
+.fish-flip {
+  transform: scaleX(var(--dir, 1));
+}
+
+.fish-art {
+  animation: fishWiggle var(--wig, 1.1s) ease-in-out infinite;
+  transform-origin: 78% 50%;
+}
+
+.fish-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@keyframes fishSwim {
+  from {
+    transform: translateX(-20vw);
+  }
+  to {
+    transform: translateX(118vw);
+  }
+}
+
+@keyframes fishSwimLeft {
+  from {
+    transform: translateX(118vw);
+  }
+  to {
+    transform: translateX(-20vw);
+  }
+}
+
+@keyframes fishBob {
+  0%,
+  100% {
+    transform: translateY(-9px);
+  }
+  50% {
+    transform: translateY(9px);
+  }
+}
+
+@keyframes fishWiggle {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fish {
+    display: none;
+  }
+}
+
 /* ---------- 顶栏 ---------- */
 
 .topbar {
@@ -1312,6 +1399,23 @@ button {
 .ach.done {
   border-color: rgba(240, 180, 41, 0.45);
   background: linear-gradient(90deg, rgba(240, 180, 41, 0.13), rgba(255, 255, 255, 0.02));
+}
+
+.ach.hidden-locked {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ach.hidden-locked .ach-mark {
+  color: #6f7a8d;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ach.hidden-locked .ach-title b {
+  color: #8d97ad;
+  letter-spacing: 3px;
 }
 
 .ach-mark {

@@ -47,6 +47,12 @@ window.SaveState = (function () {
         loseStreak: 0,
         maxLoseStreak: 0,
         upFiveCount: 0,
+        latePityCount: 0,
+        lostFifties: 0,
+        maxDayPulls: 0,
+        todayPulls: 0,
+        todayDate: '',
+        nightPulls: 0,
       },
       ach: { unlocked: {}, points: 0 },
       topup: {

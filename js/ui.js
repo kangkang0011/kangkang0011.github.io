@@ -382,8 +382,19 @@ window.UI = (function () {
         return unlocked[a.id];
       }).length;
       const rows = list.map(function (ach) {
-        const p = A.progress(ach, m);
         const done = !!unlocked[ach.id];
+        // 隐藏成就未达成前不透露条件与奖励
+        if (ach.hidden && !done) {
+          return (
+            '<li class="ach hidden-locked">' +
+            '<div class="ach-mark">?</div>' +
+            '<div class="ach-main">' +
+            '<div class="ach-title"><b>???</b><span class="ach-points">隐藏成就</span></div>' +
+            '<div class="ach-desc">达成后揭晓条件与奖励</div>' +
+            '</div></li>'
+          );
+        }
+        const p = A.progress(ach, m);
         const valueText =
           ach.op === 'lte'
             ? p.value > 0

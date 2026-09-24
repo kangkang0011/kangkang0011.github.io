@@ -105,15 +105,25 @@ window.Gacha = (function () {
       s.count5 += 1;
       if (result.isUp) s.count5Up = (s.count5Up || 0) + 1;
       if (stats) {
-        if (!stats.bestPity || result.pityAt < stats.bestPity) stats.bestPity = result.pityAt;
-        if (result.pityAt >= pool.five.hardPity) {
-          stats.hardPityCount = (stats.hardPityCount || 0) + 1;
+        const now = new Date();
+        const hour = now.getHours();
+        if (hour >= 0 && hour < 5) stats.nightPulls = (stats.nightPulls || 0) + 1;
+        const day = now.toDateString();
+        if (stats.todayDate !== day) {
+          stats.todayDate = day;
+          stats.todayPulls = 0;
         }
+        stats.todayPulls = (stats.todayPulls || 0) + 1;
+        if (stats.todayPulls > (stats.maxDayPulls || 0)) stats.maxDayPulls = stats.todayPulls;
+        if (!stats.bestPity || result.pityAt < stats.bestPity) stats.bestPity = result.pityAt;
+        // 硬保底实际几乎触发不到（软保底在第 89 抽已达 90% 以上），所以按「80 抽后出金」统计
+        if (result.pityAt >= 80) stats.latePityCount = (stats.latePityCount || 0) + 1;
         if (result.isUp) {
           stats.loseStreak = 0;
           stats.upFiveCount = (stats.upFiveCount || 0) + 1;
         } else {
           stats.loseStreak = (stats.loseStreak || 0) + 1;
+          stats.lostFifties = (stats.lostFifties || 0) + 1;
           if (stats.loseStreak > (stats.maxLoseStreak || 0)) {
             stats.maxLoseStreak = stats.loseStreak;
           }
@@ -143,6 +153,15 @@ window.Gacha = (function () {
       const r = pull(pool, s, stats);
       r.index = i;
       out.push(r);
+    }
+    if (stats) {
+      // 批次级统计放在引擎里，避免 UI 层漏记导致成就不可达
+      if (times === 10) stats.tenPulls = (stats.tenPulls || 0) + 1;
+      else if (times === 1) stats.singlePulls = (stats.singlePulls || 0) + 1;
+      const fives = out.filter(function (r) {
+        return r.rarity === 5;
+      }).length;
+      if (fives > (stats.maxFiveInTen || 0)) stats.maxFiveInTen = fives;
     }
     return out;
   }
