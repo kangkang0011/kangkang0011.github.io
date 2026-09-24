@@ -222,7 +222,8 @@ window.Fish = (function () {
     const sp = pick(SPECIES);
     const roll = Math.random();
     const t = tier || (roll < 0.28 ? 'big' : roll < 0.72 ? 'mid' : 'small');
-    const base = t === 'big' ? rand(96, 138) : t === 'mid' ? rand(70, 96) : rand(44, 70);
+    // 大鱼档下限抬到 104，保证即使处在最远的景深也仍够「大鱼」标准
+    const base = t === 'big' ? rand(104, 145) : t === 'mid' ? rand(70, 96) : rand(44, 70);
     const depth = rand(0.62, 1.28);
     return {
       id: 'f' + ++seq,
@@ -291,33 +292,39 @@ window.Fish = (function () {
     return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height };
   }
 
-  function tryEat() {
-    if (!host || items.length < 6) return false;
-    const hunters = items.filter(function (i) {
+  function hunters() {
+    return items.filter(function (i) {
       return !i.dead && !i.busy && i.cfg.size >= HUNT_SIZE;
     });
-    if (!hunters.length) return false;
-    const hunter = pick(hunters);
+  }
+
+  function tryEat() {
+    if (!host || items.length < 6) return false;
+    const bigOnes = hunters();
+    if (!bigOnes.length) return false;
+    const hunter = pick(bigOnes);
+    const h = centerOf(hunter.el);
+    // 大鱼自己在画面外就先不吃，免得白白吃掉看不见的鱼
+    if (h.x < 0 || h.x > window.innerWidth) return false;
     const preys = items.filter(function (i) {
       return !i.dead && i !== hunter && i.cfg.size < hunter.cfg.size * PREY_RATIO;
     });
     if (!preys.length) return false;
 
-    const h = centerOf(hunter.el);
+    // 只吃正前方的鱼：为了追身后的鱼而扭头，会让鱼看起来在倒着游
+    const reach = Math.max(150, Math.min(340, window.innerWidth * 0.24));
     const ahead = preys.filter(function (i) {
       const p = centerOf(i.el);
-      return (p.x - h.x) * hunter.cfg.dir > -80 && Math.abs(p.y - h.y) < 140;
+      const forward = (p.x - h.x) * hunter.cfg.dir;
+      return forward > 0 && forward <= reach && Math.abs(p.y - h.y) <= reach * 0.55;
     });
-    chase(hunter, pick(ahead.length ? ahead : preys));
+    if (!ahead.length) return false;
+    chase(hunter, pick(ahead));
     return true;
   }
 
   function moveOf(item) {
     return item.el.querySelector('.fish-move');
-  }
-
-  function restTransform(item) {
-    return 'translate(0px, 0px) scale(' + item.grow.toFixed(3) + ')';
   }
 
   /** 被吞的小鱼：被吸向大鱼嘴里同时缩小消失 */
@@ -353,19 +360,23 @@ window.Fish = (function () {
     if (!move || hunter.busy) return;
     const h = centerOf(hunter.el);
     const p0 = centerOf(prey.el);
-    const chaseMs = 620;
+    const dx0 = p0.x - h.x;
+    // 近的鱼更快咬到，远的也不会拖太久
+    const chaseMs = Math.round(380 + 260 * Math.min(1, Math.abs(dx0) / Math.max(140, window.innerWidth * 0.24)));
     // 小鱼还会继续往前游，瞄准它届时的位置
     const preySpeed = ((138 * window.innerWidth) / 100) / prey.cfg.dur;
     const targetX = p0.x + prey.cfg.dir * preySpeed * (chaseMs / 1000);
     const targetY = p0.y;
-    const face = targetX >= h.x ? 1 : -1;
-
+    const dx = targetX - h.x;
+    const dy = targetY - h.y;
+    // 调试信息：记录最近一次捕食的位移，方便自动化核对
+    host.setAttribute('data-last-dx', Math.round(dx));
+    host.setAttribute('data-last-dy', Math.round(dy));
     hunter.busy = true;
-    hunter.el.style.setProperty('--dir', face);
     move.classList.add('moving');
     move.style.transition = 'transform ' + chaseMs + 'ms cubic-bezier(0.45, 0, 0.7, 1)';
     move.style.transform =
-      'translate(' + (targetX - h.x).toFixed(1) + 'px,' + (targetY - h.y).toFixed(1) + 'px) scale(' + hunter.grow.toFixed(3) + ')';
+      'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(' + hunter.grow.toFixed(3) + ')';
 
     setTimeout(function () {
       hunter.el.classList.add('chomp');
@@ -376,18 +387,28 @@ window.Fish = (function () {
       eatenCount += 1;
       syncStats();
 
-      // 吃掉后长大，同时沿着来路游回原本的游动路线
-      hunter.grow = Math.min(2.4, hunter.grow * 1.28);
+      // 吃完不返回原位：把纵向位置并进「泳道」，位置保持不变，
+      // 鱼就从咬到的那个地方继续往前游（原来的返回动画看起来像在倒着滑）
+      const laneTop = hunter.el.getBoundingClientRect().top + dy;
+      const topPercent = Math.max(3, Math.min(90, (laneTop / window.innerHeight) * 100));
+      move.style.transition = 'none';
+      move.style.transform = 'translate(' + dx.toFixed(1) + 'px, 0px) scale(' + hunter.grow.toFixed(3) + ')';
+      hunter.el.style.setProperty('--top', topPercent.toFixed(1) + '%');
+
+      // 「长大」单独做成有过渡的，避免位置回弹
+      const grown = Math.min(2.4, hunter.grow * 1.28);
       hunter.cfg.size = Math.min(220, Math.round(hunter.cfg.size * 1.28));
       hunter.el.setAttribute('data-size', hunter.cfg.size);
-      hunter.el.setAttribute('data-grow', hunter.grow.toFixed(2));
-      move.style.transition = 'transform 640ms cubic-bezier(0.22, 0.85, 0.24, 1)';
-      move.style.transform = restTransform(hunter);
-      setTimeout(function () {
-        hunter.el.style.removeProperty('--dir');
-        move.classList.remove('moving');
-        hunter.busy = false;
-      }, 660);
+      hunter.el.setAttribute('data-grow', grown.toFixed(2));
+      requestAnimationFrame(function () {
+        move.style.transition = 'transform 520ms cubic-bezier(0.22, 0.85, 0.24, 1)';
+        hunter.grow = grown;
+        move.style.transform = 'translate(' + dx.toFixed(1) + 'px, 0px) scale(' + hunter.grow.toFixed(3) + ')';
+        setTimeout(function () {
+          move.classList.remove('moving');
+          hunter.busy = false;
+        }, 540);
+      });
 
       setTimeout(function () {
         spawnReplacement((targetY / window.innerHeight) * 100);
@@ -395,18 +416,23 @@ window.Fish = (function () {
     }, chaseMs);
   }
 
-  function scheduleHunt() {
+  function scheduleHunt(ateJustNow) {
     clearTimeout(huntTimer);
+    const wait = ateJustNow === false ? rand(1500, 3500) : rand(4500, 11000);
     huntTimer = setTimeout(function () {
-      if (!document.hidden) {
-        try {
-          tryEat();
-        } catch (err) {
-          /* 吃鱼失败不影响背景 */
-        }
+      if (document.hidden) {
+        scheduleHunt(null);
+        return;
       }
-      scheduleHunt();
-    }, rand(4500, 11000));
+      let ok = false;
+      try {
+        ok = tryEat();
+      } catch (err) {
+        ok = false;
+      }
+      // 没吃到就快些再试，吃到了才回到正常间隔
+      scheduleHunt(ok);
+    }, wait);
   }
 
   /**
@@ -425,6 +451,19 @@ window.Fish = (function () {
     const lowEnd = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
     const total = Math.max(10, count ? (lowEnd ? count - 2 : count) : 12);
     for (let i = 0; i < total; i++) addFish();
+    // 保证至少两条够大的鱼，否则永远不会发生捕食
+    let guard = 0;
+    while (hunters().length < 2 && guard < 10) {
+      const cand = items.filter(function (i) {
+        return i.cfg.size < HUNT_SIZE;
+      });
+      if (!cand.length) break;
+      const item = pick(cand);
+      item.cfg.size = Math.round(rand(100, 128));
+      item.el.setAttribute('data-size', item.cfg.size);
+      item.el.style.setProperty('--size', item.cfg.size + 'px');
+      guard += 1;
+    }
     syncStats();
     scheduleHunt();
     return total;
