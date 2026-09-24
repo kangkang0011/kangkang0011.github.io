@@ -296,7 +296,7 @@ window.GameData = (function () {
   };
 
   const CONFIG = {
-    version: '1.1.4',
+    version: '1.1.6',
     title: '不想上班',
     subtitle: '打工人抽卡模拟器',
     currencyName: '工资',
@@ -313,6 +313,23 @@ window.GameData = (function () {
    * op 为 lte 表示「越小越好」（例如 30 抽以内出金）。
    * 达成后自动发放 reward 工资，并累计 points 成就点。
    */
+  /** 隐藏福利：随机触发的无厘头意外之财，weight 越大越常出现 */
+  const BONUSES = [
+    { id: 'boss_happy', title: '老板心情不错', desc: '老板路过工位，突然塞给你一叠钱：拿着，别声张。', amount: 1600, weight: 8 },
+    { id: 'boss_666', title: '老板发了 666', desc: '群里刷了一排 666，手气最佳是你。', amount: 666, weight: 10 },
+    { id: 'catch_fish', title: '抓到一条鱼', desc: '你真在工位上抓到一条鱼，行政按市价收购了。', amount: 666, weight: 6 },
+    { id: 'hall_404', title: '楼道里捡到 404', desc: '一张皱巴巴的 404，问了一圈没人认领。', amount: 404, weight: 6 },
+    { id: 'cold_joke', title: '老板讲了个冷笑话', desc: '全场只有你笑了，而且笑得很真诚。', amount: 233, weight: 6 },
+    { id: 'envelope', title: '茶水间的神秘信封', desc: '没有署名，没有留言，只有钱。', amount: 1024, weight: 5 },
+    { id: 'lottery', title: '年会阳光普照奖', desc: '虽然没抽到手机，但现金也挺好。', amount: 888, weight: 7 },
+    { id: 'overtime_pay', title: '加班费到账', desc: '财务说：这次真的给你算上了。', amount: 996, weight: 7 },
+    { id: 'tea_refund', title: '客户下午茶折现', desc: '奶茶没喝到，钱倒是到账了。', amount: 520, weight: 6 },
+    { id: 'toilet_coin', title: '厕所捡到一枚硬币', desc: '你郑重地把它上交了，然后它变成了你的工资。', amount: 1, weight: 4 },
+    { id: 'ex_colleague', title: '前同事请客退款', desc: '他离职前你垫的那顿饭，居然真的还了。', amount: 328, weight: 5 },
+    { id: 'cat_payroll', title: '老板的猫踩了发薪键', desc: '财务系统手滑多打了一个零，没人发现。', amount: 6480, weight: 1 },
+    { id: 'cat_payroll2', title: '财务手滑多打一个零', desc: '你说要退回去，财务说不用了，下个月扣。', amount: 2024, weight: 2 },
+  ];
+
   const ACHIEVEMENTS = [
     { id: 'ach_first_pull', group: '抽卡', name: '初次打卡', desc: '完成第一次祈愿', metric: 'totalPulls', target: 1, points: 5, reward: 160 },
     { id: 'ach_ten_debut', group: '抽卡', name: '十连入门', desc: '完成一次十连祈愿', metric: 'tenPulls', target: 1, points: 5, reward: 160 },
@@ -367,6 +384,7 @@ window.GameData = (function () {
     POOLS: POOLS,
     SHOP: SHOP,
     ACHIEVEMENTS: ACHIEVEMENTS,
+    BONUSES: BONUSES,
     CONFIG: CONFIG,
     itemById: function (id) {
       return byId[id] || null;

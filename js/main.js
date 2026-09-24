@@ -39,6 +39,20 @@
     UI.achNotify(list);
   }
 
+  /** 隐藏福利：随机到账一笔无厘头的钱 */
+  function grantBonus(bonus) {
+    if (!bonus) return;
+    state.currency += bonus.amount;
+    state.stats.bonusCount = (state.stats.bonusCount || 0) + 1;
+    state.stats.bonusTotal = (state.stats.bonusTotal || 0) + bonus.amount;
+    const unlocked = A.check(state);
+    persist();
+    refresh();
+    window.Sound.play('coin');
+    UI.moneyNotify(bonus);
+    notifyAch(unlocked);
+  }
+
   function persist() {
     S.save(state);
   }
@@ -363,6 +377,17 @@
     bind();
     if (window.Fish) window.Fish.spawn(document.getElementById('bgFish'), 12);
     window.Sound.setEnabled(state.sound !== false);
+    if (window.Bonus) {
+      window.Bonus.start(grantBonus, function () {
+        return UI.isPullOpen() || UI.isModalOpen();
+      });
+      // 调试入口：加 ?bonus=1 打开页面，会立刻触发一次意外之财
+      if (/[?&]bonus=1\b/.test(window.location.search)) {
+        setTimeout(function () {
+          window.Bonus.triggerNow();
+        }, 800);
+      }
+    }
     const unlockOnce = function () {
       window.Sound.unlock();
       document.removeEventListener('pointerdown', unlockOnce);

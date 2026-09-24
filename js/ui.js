@@ -319,6 +319,7 @@ window.UI = (function () {
       statBlock('累计消耗', '¥' + fmt(state.spendCurrency), '单抽均价 ¥' + avgCost.toFixed(1)) +
       statBlock('模拟充值', '¥' + fmt(state.topup.total), '未发生任何真实支付') +
       statBlock('打工次数', fmt(state.workCount), '白嫖共 ' + fmt(state.workCount * C.workReward) + ' 工资') +
+      statBlock('意外之财', '¥' + fmt((state.stats && state.stats.bonusTotal) || 0), ((state.stats && state.stats.bonusCount) || 0) + ' 次随机福利') +
       statBlock('月卡', monthly.active ? '生效中' : '未开通', window.SaveState.monthlyRemainDays(state) + ' 天后到期') +
       '</div>' +
       '<h3 class="sub">分卡池统计</h3>' +
@@ -806,11 +807,11 @@ window.UI = (function () {
   const ACH_CARD_LIFE = 4200;
   const ACH_CARD_MAX = 4;
 
-  function pushAchCard(innerHTML) {
+  function pushSideCard(innerHTML, kind) {
     const box = $('achToasts');
     if (!box) return;
     const el = document.createElement('div');
-    el.className = 'ach-toast';
+    el.className = 'ach-toast' + (kind ? ' ' + kind : '');
     el.innerHTML = innerHTML;
     box.appendChild(el);
     while (box.children.length > ACH_CARD_MAX) {
@@ -846,14 +847,29 @@ window.UI = (function () {
       const points = list.reduce(function (n, a) {
         return n + a.points;
       }, 0);
-      pushAchCard(
+      pushSideCard(
         achCardHTML('成就达成', '一次解锁 ' + list.length + ' 项', '+' + fmt(points) + ' 成就点 · ¥' + fmt(reward))
       );
       return;
     }
     list.forEach(function (a) {
-      pushAchCard(achCardHTML('成就达成', a.name, '+' + a.points + ' 成就点 · ¥' + fmt(a.reward)));
+      pushSideCard(achCardHTML('成就达成', a.name, '+' + a.points + ' 成就点 · ¥' + fmt(a.reward)));
     });
+  }
+
+  /** 隐藏福利提示：右侧滑入一张「意外之财」卡片 */
+  function moneyNotify(bonus) {
+    if (!bonus) return;
+    pushSideCard(
+      '<div class="ach-toast-icon">💰</div>' +
+        '<div class="ach-toast-body">' +
+        '<div class="ach-toast-label">意外之财</div>' +
+        '<div class="ach-toast-name">' + esc(bonus.title) + '</div>' +
+        '<div class="ach-toast-desc">' + esc(bonus.desc) + '</div>' +
+        '<div class="ach-toast-gain">+' + fmt(bonus.amount) + ' 工资</div>' +
+        '</div>',
+      'money'
+    );
   }
 
   return {
@@ -879,5 +895,6 @@ window.UI = (function () {
     isPullOpen: isPullOpen,
     toast: toast,
     achNotify: achNotify,
+    moneyNotify: moneyNotify,
   };
 })();
