@@ -36,17 +36,7 @@
   function notifyAch(list) {
     if (!list.length) return;
     window.Sound.play('achievement');
-    // 一次解锁很多项时（例如老存档首次进入），合并成一条提示
-    if (list.length > 2) {
-      const total = list.reduce(function (n, a) {
-        return n + a.reward;
-      }, 0);
-      say('达成 ' + list.length + ' 项成就（+' + UI.fmt(total) + ' 工资），点 🏆 查看', 'gold');
-      return;
-    }
-    list.forEach(function (a) {
-      say('成就达成：' + a.name + '（+' + UI.fmt(a.reward) + ' 工资）', 'gold');
-    });
+    UI.achNotify(list);
   }
 
   function persist() {

@@ -1621,9 +1621,10 @@ button {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 120px;
+  top: calc(82px + env(safe-area-inset-top));
+  bottom: auto;
   z-index: 200;
-  transform: translate(-50%, 16px);
+  transform: translate(-50%, -16px);
   padding: 11px 20px;
   border-radius: 999px;
   font-size: 13px;
@@ -1653,7 +1654,102 @@ button {
   color: #ffb4a6;
 }
 
+/* ---------- 成就：右侧滑入卡片 ---------- */
+
+.ach-toasts {
+  position: fixed;
+  top: calc(82px + env(safe-area-inset-top));
+  right: 16px;
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.ach-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(320px, 82vw);
+  padding: 12px 15px;
+  border-radius: 14px;
+  border: 1px solid rgba(240, 180, 41, 0.55);
+  background: linear-gradient(135deg, rgba(240, 180, 41, 0.24), rgba(16, 20, 29, 0.96) 62%);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  animation: achToastIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ach-toast.leaving {
+  animation: achToastOut 0.36s ease forwards;
+}
+
+.ach-toast-icon {
+  flex: none;
+  font-size: 26px;
+  filter: drop-shadow(0 0 10px rgba(240, 180, 41, 0.7));
+}
+
+.ach-toast-body {
+  min-width: 0;
+}
+
+.ach-toast-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+
+.ach-toast-name {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ach-toast-gain {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: #cbd3e2;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes achToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(115%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes achToastOut {
+  to {
+    opacity: 0;
+    transform: translateX(115%) scale(0.96);
+  }
+}
+
 /* ---------- 响应式 ---------- */
+
+/* 窗口不够宽时，顶部提示与右侧成就卡片改为上下错开，避免互相压住 */
+@media (max-width: 1080px) {
+  .toast {
+    top: calc(94px + env(safe-area-inset-top));
+  }
+
+  .ach-toasts {
+    top: calc(158px + env(safe-area-inset-top));
+    right: 12px;
+  }
+}
 
 @media (max-width: 860px) {
   .banner-inner {
@@ -1696,6 +1792,7 @@ button {
   .result-wrap.ten {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   }
+
 }
 
 @media (max-width: 520px) {

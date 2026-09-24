@@ -778,6 +778,61 @@ window.UI = (function () {
     }, 2200);
   }
 
+  /* ---------------- 成就提示：右侧滑入卡片 ---------------- */
+
+  const ACH_CARD_LIFE = 4200;
+  const ACH_CARD_MAX = 4;
+
+  function pushAchCard(innerHTML) {
+    const box = $('achToasts');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'ach-toast';
+    el.innerHTML = innerHTML;
+    box.appendChild(el);
+    while (box.children.length > ACH_CARD_MAX) {
+      box.removeChild(box.firstElementChild);
+    }
+    setTimeout(function () {
+      if (!el.parentNode) return;
+      el.classList.add('leaving');
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 380);
+    }, ACH_CARD_LIFE);
+  }
+
+  function achCardHTML(label, name, gain) {
+    return (
+      '<div class="ach-toast-icon">🏆</div>' +
+      '<div class="ach-toast-body">' +
+      '<div class="ach-toast-label">' + esc(label) + '</div>' +
+      '<div class="ach-toast-name">' + esc(name) + '</div>' +
+      '<div class="ach-toast-gain">' + gain + '</div>' +
+      '</div>'
+    );
+  }
+
+  /** 成就达成提示：一次解锁 4 项以上时合并成一张汇总卡 */
+  function achNotify(list) {
+    if (!list || !list.length) return;
+    if (list.length > 3) {
+      const reward = list.reduce(function (n, a) {
+        return n + a.reward;
+      }, 0);
+      const points = list.reduce(function (n, a) {
+        return n + a.points;
+      }, 0);
+      pushAchCard(
+        achCardHTML('成就达成', '一次解锁 ' + list.length + ' 项', '+' + fmt(points) + ' 成就点 · ¥' + fmt(reward))
+      );
+      return;
+    }
+    list.forEach(function (a) {
+      pushAchCard(achCardHTML('成就达成', a.name, '+' + a.points + ' 成就点 · ¥' + fmt(a.reward)));
+    });
+  }
+
   return {
     $: $,
     fmt: fmt,
@@ -800,5 +855,6 @@ window.UI = (function () {
     endPull: endPull,
     isPullOpen: isPullOpen,
     toast: toast,
+    achNotify: achNotify,
   };
 })();
