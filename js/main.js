@@ -79,21 +79,26 @@
     refresh();
 
     busy = true;
-    UI.playPull(results, { fast: state.skipAnim }).then(function () {
+    UI.playPull(results, {
+      fast: state.skipAnim,
+      // 稀有卡缩回结果格的同时就弹出提示，不再等玩家关闭结果页
+      onRevealed: function () {
+        const fives = results.filter(function (r) {
+          return r.rarity === 5;
+        });
+        if (fives.length) {
+          say(
+            '获得五星：' + fives.map(function (f) {
+              return f.item.name + (f.isUp ? '（UP）' : '');
+            }).join('、'),
+            'gold'
+          );
+        }
+        notifyAch(unlocked);
+      },
+    }).then(function () {
       busy = false;
       refresh();
-      const fives = results.filter(function (r) {
-        return r.rarity === 5;
-      });
-      if (fives.length) {
-        say(
-          '获得五星：' + fives.map(function (f) {
-            return f.item.name + (f.isUp ? '（UP）' : '');
-          }).join('、'),
-          'gold'
-        );
-      }
-      notifyAch(unlocked);
     });
   }
 

@@ -568,6 +568,7 @@ window.UI = (function () {
     pull.spotIndex = -1;
     pull.layer = null;
     pull.pop = null;
+    pull.revealNotified = false;
 
     overlay.hidden = false;
     overlay.className = 'overlay show r' + maxRarity;
@@ -607,6 +608,7 @@ window.UI = (function () {
     const rarest = pickSpotlight(pull.results);
     if (pull.opts.fast || rarest < 0) {
       revealAll();
+      notifyRevealed();
       completeReveal();
       return;
     }
@@ -634,6 +636,14 @@ window.UI = (function () {
       k += 1;
     });
     return k;
+  }
+
+  /** 结果揭晓回调：只触发一次，用于「稀有卡刚缩回原位就提示成就」这类即时反馈 */
+  function notifyRevealed() {
+    if (pull.revealNotified) return;
+    pull.revealNotified = true;
+    const fn = pull.opts && pull.opts.onRevealed;
+    if (typeof fn === 'function') fn();
   }
 
   /**
@@ -714,6 +724,8 @@ window.UI = (function () {
       slot.classList.remove('pending');
       slot.classList.add('landed');
     }
+    // 稀有卡缩回结果格的瞬间就通知，不等玩家关闭结果页
+    notifyRevealed();
     pull.phase = 'reveal';
     const rest = revealRest(pull.spotIndex);
     pull.timers.push(setTimeout(completeReveal, 180 + rest * 70));
