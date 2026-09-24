@@ -35,6 +35,7 @@
 
   function notifyAch(list) {
     if (!list.length) return;
+    window.Sound.play('achievement');
     // 一次解锁很多项时（例如老存档首次进入），合并成一条提示
     if (list.length > 2) {
       const total = list.reduce(function (n, a) {
@@ -70,6 +71,7 @@
       say('工资不够了：点「上个班」白嫖，或者去「充值」', 'warn');
       return;
     }
+    window.Sound.play('click');
 
     S.spend(state, cost);
     const results = G.pullMany(pool, state.pools[pool.id], times, state.stats);
@@ -190,6 +192,7 @@
         persist();
         refresh();
         openShop();
+        window.Sound.play('coin');
         say('充值成功 +' + UI.fmt(res.gained) + ' 工资' + (res.first ? '（首充双倍）' : ''), 'gold');
         notifyAch(unlocked);
       } else if (kind === 'monthly') {
@@ -198,6 +201,7 @@
         persist();
         refresh();
         openShop();
+        window.Sound.play('coin');
         say('月卡开通成功 +' + UI.fmt(gained) + ' 工资', 'gold');
         notifyAch(unlocked);
       } else if (kind === 'reset') {
@@ -215,7 +219,14 @@
   function handleSettingsClick(target) {
     const toggle = target.closest('[data-toggle]');
     if (toggle) {
-      state.skipAnim = !state.skipAnim;
+      const kind = toggle.getAttribute('data-toggle');
+      if (kind === 'sound') {
+        state.sound = !state.sound;
+        window.Sound.setEnabled(state.sound);
+        if (state.sound) window.Sound.play('coin');
+      } else {
+        state.skipAnim = !state.skipAnim;
+      }
       persist();
       openSettings();
       return true;
@@ -287,6 +298,7 @@
       const unlocked = A.check(state);
       persist();
       refresh();
+      window.Sound.play('coin');
       say('上班 30 秒，到账 ' + UI.fmt(C.workReward) + ' 工资');
       notifyAch(unlocked);
     });
@@ -360,6 +372,12 @@
   function init() {
     const gained = S.claimMonthly(state);
     bind();
+    window.Sound.setEnabled(state.sound !== false);
+    const unlockOnce = function () {
+      window.Sound.unlock();
+      document.removeEventListener('pointerdown', unlockOnce);
+    };
+    document.addEventListener('pointerdown', unlockOnce);
     // 静态站点容易被浏览器缓存出「新旧脚本混用」，这里兜底提示一次
     if (document.body.getAttribute('data-version') && document.body.getAttribute('data-version') !== C.version) {
       say('页面资源版本不一致，请按 Ctrl+F5 强制刷新一次', 'warn');

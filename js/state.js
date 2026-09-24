@@ -37,6 +37,7 @@ window.SaveState = (function () {
       workCount: 0,
       spendCurrency: 0,
       skipAnim: false,
+      sound: true,
       stats: {
         singlePulls: 0,
         tenPulls: 0,

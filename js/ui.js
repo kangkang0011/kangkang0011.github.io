@@ -470,6 +470,11 @@ window.UI = (function () {
       '<span class="knob"></span></button>' +
       '</div>' +
       '<div class="setting-row">' +
+      '<div><strong>音效</strong><p class="muted">抽卡、出金、落卡与成就提示音，由 Web Audio 实时合成，不加载任何音频文件</p></div>' +
+      '<button class="switch ' + (state.sound ? 'on' : '') + '" data-toggle="sound">' +
+      '<span class="knob"></span></button>' +
+      '</div>' +
+      '<div class="setting-row">' +
       '<div><strong>导出存档</strong><p class="muted">把抽卡记录与资源保存成 JSON 文件</p></div>' +
       '<button class="btn" data-action="export">导出</button>' +
       '</div>' +
@@ -575,6 +580,7 @@ window.UI = (function () {
     $('pullSkip').hidden = false;
     $('pullContinue').hidden = true;
     $('pullSkip').onclick = skipCurrent;
+    if (window.Sound) window.Sound.play(opts.fast ? 'sparkle' : 'burst' + maxRarity);
 
     return new Promise(function (resolve) {
       pull.resolve = resolve;
@@ -648,6 +654,7 @@ window.UI = (function () {
     // 以卡片自身（而不是格子）的矩形为目标：格子在网格里会被拉伸，
     // 用它会导致落地时高度差几个像素。
     const target = (slot.querySelector('.rcard') || slot).getBoundingClientRect();
+    if (window.Sound) window.Sound.play('fly');
 
     // 放大倍数同时受「期望宽度」和「视口剩余空间」约束，避免超大卡被裁切
     const maxWidth = Math.min(t.big, window.innerWidth * 0.86);
@@ -696,6 +703,7 @@ window.UI = (function () {
   function finishSpotlight() {
     if (pull.phase !== 'spotlight' && pull.phase !== 'flying') return;
     clearPullTimers();
+    if (window.Sound) window.Sound.play('land');
     if (pull.layer) {
       pull.layer.remove();
       pull.layer = null;
