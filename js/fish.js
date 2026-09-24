@@ -223,6 +223,7 @@ window.Fish = (function () {
     const base = t === 'big' ? rand(96, 138) : t === 'mid' ? rand(70, 96) : rand(44, 70);
     const depth = rand(0.62, 1.28);
     return {
+      id: 'f' + ++seq,
       species: sp,
       tier: t,
       size: Math.round(base * (0.72 + depth * 0.3)),
@@ -244,6 +245,8 @@ window.Fish = (function () {
   function elementFor(cfg, appearing) {
     const el = document.createElement('div');
     el.className = 'fish' + (cfg.dir < 0 ? ' left' : '') + (cfg.dash ? ' dash' : '') + (appearing ? ' appearing' : '');
+    el.setAttribute('data-id', cfg.id);
+    el.setAttribute('data-grow', '1');
     el.setAttribute('data-species', cfg.species.name);
     el.setAttribute('data-size', cfg.size);
     el.style.setProperty('--top', cfg.top + '%');
@@ -257,14 +260,17 @@ window.Fish = (function () {
     el.style.setProperty('--tilt', cfg.tilt + 'deg');
     if (cfg.blur) el.style.filter = 'blur(' + cfg.blur + 'px)';
     el.innerHTML =
-      '<div class="fish-bob"><div class="fish-flip"><div class="fish-art">' + buildSVG(cfg.species, cfg.tint, cfg.shape) + '</div></div></div>';
+      '<div class="fish-move"><div class="fish-bob"><div class="fish-flip"><div class="fish-art">' +
+      buildSVG(cfg.species, cfg.tint, cfg.shape) +
+      '</div></div></div></div>';
     return el;
   }
 
   function addFish(tier, appearing) {
     const cfg = makeConfig(tier);
     const el = elementFor(cfg, appearing);
-    const item = { cfg: cfg, el: el, dead: false };
+    // grow：吃掉小鱼后永久变大（用 transform 缩放，不影响游动动画）
+    const item = { cfg: cfg, el: el, dead: false, busy: false, grow: 1 };
     cfg.item = item;
     host.appendChild(el);
     items.push(item);
@@ -289,7 +295,7 @@ window.Fish = (function () {
   function tryEat() {
     if (!host || items.length < 6) return false;
     const hunters = items.filter(function (i) {
-      return !i.dead && i.cfg.size >= HUNT_SIZE;
+      return !i.dead && !i.busy && i.cfg.size >= HUNT_SIZE;
     });
     if (!hunters.length) return false;
     const hunter = pick(hunters);
@@ -307,55 +313,84 @@ window.Fish = (function () {
     return true;
   }
 
+  function moveOf(item) {
+    return item.el.querySelector('.fish-move');
+  }
+
+  function restTransform(item) {
+    return 'translate(0px, 0px) scale(' + item.grow.toFixed(3) + ')';
+  }
+
+  /** 被吞的小鱼：被吸向大鱼嘴里同时缩小消失 */
+  function eatPrey(prey, tx, ty) {
+    prey.dead = true;
+    const pm = moveOf(prey);
+    const p = centerOf(prey.el);
+    prey.el.classList.add('eaten');
+    if (pm) {
+      pm.style.transition = 'transform 430ms ease-in';
+      pm.style.transform = 'translate(' + (tx - p.x).toFixed(1) + 'px,' + (ty - p.y).toFixed(1) + 'px) scale(0.08) rotate(24deg)';
+    }
+    setTimeout(function () {
+      removeItem(prey);
+    }, 440);
+  }
+
+  /** 补一条小鱼：从屏幕边缘游进来，不会凭空出现在画面中间 */
+  function spawnReplacement(topPercent) {
+    if (items.length >= 14) return;
+    const item = addFish('small', true);
+    const top = Math.max(5, Math.min(86, topPercent + rand(-7, 7)));
+    item.el.style.setProperty('--top', top.toFixed(1) + '%');
+    item.el.style.setProperty('--delay', '0s');
+  }
+
+  /**
+   * 捕食：直接移动大鱼本尊（不改 DOM、不重建），
+   * 咬完后大鱼游回原路线并且永久变大。
+   */
   function chase(hunter, prey) {
+    const move = moveOf(hunter);
+    if (!move || hunter.busy) return;
     const h = centerOf(hunter.el);
     const p0 = centerOf(prey.el);
-    const chaseMs = 680;
+    const chaseMs = 620;
     // 小鱼还会继续往前游，瞄准它届时的位置
     const preySpeed = ((138 * window.innerWidth) / 100) / prey.cfg.dur;
     const targetX = p0.x + prey.cfg.dir * preySpeed * (chaseMs / 1000);
     const targetY = p0.y;
-
-    const clone = elementFor(hunter.cfg, false);
-    clone.classList.add('fish-chase');
-    clone.style.left = h.x - h.w / 2 + 'px';
-    clone.style.top = h.y - h.h / 2 + 'px';
-    clone.style.width = h.w + 'px';
-    clone.style.opacity = getComputedStyle(hunter.el).opacity;
     const face = targetX >= h.x ? 1 : -1;
-    clone.style.setProperty('--dir', face);
-    host.appendChild(clone);
-    hunter.el.style.visibility = 'hidden';
 
-    requestAnimationFrame(function () {
-      clone.style.transform = 'translate(' + (targetX - h.x).toFixed(1) + 'px,' + (targetY - h.y).toFixed(1) + 'px)';
-    });
+    hunter.busy = true;
+    hunter.el.style.setProperty('--dir', face);
+    move.style.transition = 'transform ' + chaseMs + 'ms cubic-bezier(0.45, 0, 0.7, 1)';
+    move.style.transform =
+      'translate(' + (targetX - h.x).toFixed(1) + 'px,' + (targetY - h.y).toFixed(1) + 'px) scale(' + hunter.grow.toFixed(3) + ')';
 
     setTimeout(function () {
-      clone.classList.add('chomp');
-      prey.el.classList.add('eaten');
+      hunter.el.classList.add('chomp');
+      setTimeout(function () {
+        hunter.el.classList.remove('chomp');
+      }, 320);
+      eatPrey(prey, targetX, targetY);
       eatenCount += 1;
       syncStats();
+
+      // 吃掉后长大，同时沿着来路游回原本的游动路线
+      hunter.grow = Math.min(2.4, hunter.grow * 1.28);
+      hunter.cfg.size = Math.min(220, Math.round(hunter.cfg.size * 1.28));
+      hunter.el.setAttribute('data-size', hunter.cfg.size);
+      hunter.el.setAttribute('data-grow', hunter.grow.toFixed(2));
+      move.style.transition = 'transform 640ms cubic-bezier(0.22, 0.85, 0.24, 1)';
+      move.style.transform = restTransform(hunter);
       setTimeout(function () {
-        removeItem(prey);
-      }, 380);
+        hunter.el.style.removeProperty('--dir');
+        hunter.busy = false;
+      }, 660);
+
       setTimeout(function () {
-        // 大鱼从当前位置接回游动动画：用负的 animation-delay 让它无缝继续
-        const span = 1.38 * window.innerWidth;
-        const passed = Math.max(0, Math.min(span, targetX + 0.2 * window.innerWidth));
-        const next = addFish(hunter.cfg.tier, true);
-        next.cfg.dir = face;
-        next.el.classList.toggle('left', face === -1);
-        next.el.classList.toggle('dash', hunter.cfg.dash);
-        next.el.style.setProperty('--top', ((targetY / window.innerHeight) * 100).toFixed(1) + '%');
-        next.el.style.setProperty('--dir', face);
-        next.el.style.setProperty('--delay', (-(passed / span) * hunter.cfg.dur).toFixed(2) + 's');
-        removeItem(hunter);
-        if (clone.parentNode) clone.parentNode.removeChild(clone);
-        setTimeout(function () {
-          if (items.length < 14) addFish('small', true);
-        }, rand(600, 2200));
-      }, 300);
+        spawnReplacement((targetY / window.innerHeight) * 100);
+      }, rand(900, 2600));
     }, chaseMs);
   }
 
