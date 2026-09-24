@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>不想上班 · 打工人抽卡模拟器</title>
+<meta name="description" content="《不想上班》是一个原创的打工人主题抽卡模拟器：限定祈愿、软保底、大保底、出金统计、模拟充值，全部角色与内容均为原创。">
+<meta name="theme-color" content="#0b0d12">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="bg-fx" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">🐟</div>
+    <div class="brand-text">
+      <strong>不想上班</strong>
+      <small>打工人抽卡模拟器</small>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <span class="chip monthly" id="monthlyChip" hidden></span>
+    <div class="res" title="工资余额">
+      <span class="res-sign">¥</span>
+      <b id="currencyValue">0</b>
+    </div>
+    <button class="btn" id="btnWork" title="白嫖工资">上个班</button>
+    <button class="btn buy" id="btnShop">充值</button>
+    <button class="icon-btn" id="btnStats" title="数据统计">📈</button>
+    <button class="icon-btn" id="btnBook" title="打工人图鉴">📖</button>
+    <button class="icon-btn" id="btnSettings" title="设置">⚙️</button>
+  </div>
+</header>
+
+<main class="stage">
+  <nav class="pool-tabs" id="poolTabs" aria-label="卡池切换"></nav>
+
+  <section class="banner" id="banner">
+    <div class="banner-inner">
+      <div class="banner-copy">
+        <span class="banner-tag" id="bannerTag">限定祈愿</span>
+        <h1 id="bannerTitle">摸鱼大师</h1>
+        <p class="banner-sub" id="bannerSub"></p>
+        <ul class="banner-notes" id="bannerNotes"></ul>
+        <p class="banner-stat" id="bannerStat"></p>
+      </div>
+      <div class="banner-cards" id="bannerCards"></div>
+    </div>
+    <div class="banner-glow" aria-hidden="true"></div>
+  </section>
+
+  <section class="pity">
+    <div class="pity-row">
+      <div class="pity-label">
+        五星保底 <b id="pity5Text">0 / 90</b>
+        <span class="chip guarantee" id="guaranteeTag" hidden>下次必出 UP</span>
+      </div>
+      <div class="pity-bar"><i id="pity5Fill"></i></div>
+    </div>
+    <div class="pity-row">
+      <div class="pity-label">四星保底 <b id="pity4Text">0 / 10</b></div>
+      <div class="pity-bar small"><i id="pity4Fill" class="p4"></i></div>
+    </div>
+    <p class="pity-hint" id="pityHint"></p>
+  </section>
+</main>
+
+<footer class="actionbar">
+  <button class="btn btn-pull" id="btnPull1">
+    <span class="btn-main">单抽</span>
+    <span class="btn-cost">¥<b id="cost1">160</b></span>
+  </button>
+  <button class="btn btn-pull ten" id="btnPull10">
+    <span class="btn-main">十连</span>
+    <span class="btn-cost">¥<b id="cost10">1600</b></span>
+  </button>
+  <span class="pull-count" id="pullCount"></span>
+</footer>
+
+<div class="overlay" id="pullOverlay" hidden>
+  <div class="pull-sky" aria-hidden="true"></div>
+  <div class="pull-stage" id="pullStage"></div>
+  <button class="btn btn-ghost pull-skip" id="pullSkip">跳过</button>
+  <button class="btn btn-pull pull-continue" id="pullContinue" hidden>继续</button>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-panel">
+    <header class="modal-head">
+      <h2 id="modalTitle">标题</h2>
+      <button class="icon-btn" id="modalClose" title="关闭">✕</button>
+    </header>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/data.js"></script>
+<script src="js/gacha.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
