@@ -70,9 +70,10 @@ window.Gacha = (function () {
    * 抽一次。会直接修改 state（该卡池的保底计数与总计数），并返回结果。
    * @param {object} pool 卡池配置
    * @param {object} s   该卡池的存档状态
+   * @param {object} [stats] 成就统计（可选），用于记录最佳保底、歪卡连击等
    * @returns {{rarity:number,item:object,isUp:boolean,pityAt:number}}
    */
-  function pull(pool, s) {
+  function pull(pool, s, stats) {
     const pullsSinceFive = s.pity5 + 1;
     const pullsSinceFour = s.pity4 + 1;
     const isFive = Math.random() < fiveChance(pool, pullsSinceFive);
@@ -103,6 +104,21 @@ window.Gacha = (function () {
     if (result.rarity === 5) {
       s.count5 += 1;
       if (result.isUp) s.count5Up = (s.count5Up || 0) + 1;
+      if (stats) {
+        if (!stats.bestPity || result.pityAt < stats.bestPity) stats.bestPity = result.pityAt;
+        if (result.pityAt >= pool.five.hardPity) {
+          stats.hardPityCount = (stats.hardPityCount || 0) + 1;
+        }
+        if (result.isUp) {
+          stats.loseStreak = 0;
+          stats.upFiveCount = (stats.upFiveCount || 0) + 1;
+        } else {
+          stats.loseStreak = (stats.loseStreak || 0) + 1;
+          if (stats.loseStreak > (stats.maxLoseStreak || 0)) {
+            stats.maxLoseStreak = stats.loseStreak;
+          }
+        }
+      }
     }
     if (result.rarity === 4) s.count4 += 1;
 
@@ -121,10 +137,10 @@ window.Gacha = (function () {
     return result;
   }
 
-  function pullMany(pool, s, times) {
+  function pullMany(pool, s, times, stats) {
     const out = [];
     for (let i = 0; i < times; i++) {
-      const r = pull(pool, s);
+      const r = pull(pool, s, stats);
       r.index = i;
       out.push(r);
     }

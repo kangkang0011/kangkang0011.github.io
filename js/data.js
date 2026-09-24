@@ -306,6 +306,42 @@ window.GameData = (function () {
     storageKey: 'bxsb.save.v1',
   };
 
+  /**
+   * 成就表
+   * metric 取 Achievements.metrics(state) 里的字段，target 为达成阈值；
+   * op 为 lte 表示「越小越好」（例如 30 抽以内出金）。
+   * 达成后自动发放 reward 工资，并累计 points 成就点。
+   */
+  const ACHIEVEMENTS = [
+    { id: 'ach_first_pull', group: '抽卡', name: '初次打卡', desc: '完成第一次祈愿', metric: 'totalPulls', target: 1, points: 5, reward: 160 },
+    { id: 'ach_ten_debut', group: '抽卡', name: '十连入门', desc: '完成一次十连祈愿', metric: 'tenPulls', target: 1, points: 5, reward: 160 },
+    { id: 'ach_pull_100', group: '抽卡', name: '手气不错', desc: '累计祈愿 100 次', metric: 'totalPulls', target: 100, points: 10, reward: 800 },
+    { id: 'ach_pull_500', group: '抽卡', name: '抽卡成瘾', desc: '累计祈愿 500 次', metric: 'totalPulls', target: 500, points: 20, reward: 3200 },
+    { id: 'ach_pull_1000', group: '抽卡', name: '信仰之跃', desc: '累计祈愿 1000 次', metric: 'totalPulls', target: 1000, points: 30, reward: 6480 },
+
+    { id: 'ach_first_five', group: '出金', name: '第一桶金', desc: '获得第一个五星', metric: 'fiveCount', target: 1, points: 10, reward: 320 },
+    { id: 'ach_five_10', group: '出金', name: '五星星空', desc: '累计获得 10 个五星', metric: 'fiveCount', target: 10, points: 20, reward: 1600 },
+    { id: 'ach_double_five', group: '出金', name: '双黄蛋', desc: '一次十连中出现 2 个五星', metric: 'maxFiveInTen', target: 2, points: 30, reward: 6480 },
+    { id: 'ach_early_five', group: '出金', name: '欧皇附体', desc: '在 30 抽以内获得五星', metric: 'bestPity', target: 30, op: 'lte', points: 20, reward: 1600 },
+    { id: 'ach_hard_pity', group: '出金', name: '保底之神', desc: '在第 90 抽触发硬保底', metric: 'hardPityCount', target: 1, points: 20, reward: 1600 },
+    { id: 'ach_lose_streak', group: '出金', name: '非酋的尊严', desc: '连续 3 个五星都不是 UP', metric: 'maxLoseStreak', target: 3, points: 20, reward: 1600 },
+    { id: 'ach_up_first', group: '出金', name: '命中注定', desc: '获得 UP 限定五星', metric: 'upFiveCount', target: 1, points: 10, reward: 320 },
+
+    { id: 'ach_first_four', group: '收集', name: '紫气东来', desc: '获得第一个四星', metric: 'fourCount', target: 1, points: 5, reward: 160 },
+    { id: 'ach_four_10', group: '收集', name: '四星常客', desc: '累计获得 10 个四星', metric: 'fourCount', target: 10, points: 10, reward: 640 },
+    { id: 'ach_collect_15', group: '收集', name: '收藏入门', desc: '图鉴收集 15 种', metric: 'ownedKinds', target: 15, points: 15, reward: 960 },
+    { id: 'ach_all_four', group: '收集', name: '部门团建', desc: '集齐全部 12 位四星打工人', metric: 'ownedFourKinds', target: 12, points: 25, reward: 3200 },
+    { id: 'ach_all_three', group: '收集', name: '办公室仓库', desc: '集齐全部 12 件三星办公用品', metric: 'ownedThreeKinds', target: 12, points: 15, reward: 960 },
+    { id: 'ach_limited', group: '收集', name: '限定拥有者', desc: '招到限定五星「摸鱼教父」', metric: 'hasLimited', target: 1, points: 20, reward: 1600 },
+    { id: 'ach_collect_all', group: '收集', name: '打工图鉴全收录', desc: '集齐全部 31 种角色与物品', metric: 'ownedKinds', target: 31, points: 50, reward: 12960 },
+
+    { id: 'ach_work_10', group: '资源', name: '白嫖之王', desc: '点「上个班」10 次', metric: 'workCount', target: 10, points: 5, reward: 800 },
+    { id: 'ach_spend_16000', group: '资源', name: '工资流水', desc: '累计消耗 16000 工资', metric: 'spendCurrency', target: 16000, points: 10, reward: 800 },
+    { id: 'ach_topup_648', group: '资源', name: '氪金玩家', desc: '模拟充值累计 648 元', metric: 'topupTotal', target: 648, points: 20, reward: 1600 },
+    { id: 'ach_monthly', group: '资源', name: '月卡党', desc: '开通打工人月卡', metric: 'monthlyActive', target: 1, points: 10, reward: 320 },
+    { id: 'ach_broke', group: '资源', name: '身无分文', desc: '余额不足一次单抽', metric: 'currencyLt160', target: 1, points: 5, reward: 160 },
+  ];
+
   const ALL = FIVE.concat(FOUR, THREE);
   const byId = {};
   ALL.forEach((item) => {
@@ -321,6 +357,7 @@ window.GameData = (function () {
     ALL: ALL,
     POOLS: POOLS,
     SHOP: SHOP,
+    ACHIEVEMENTS: ACHIEVEMENTS,
     CONFIG: CONFIG,
     itemById: function (id) {
       return byId[id] || null;

@@ -160,6 +160,12 @@ window.UI = (function () {
     const remain = window.SaveState.monthlyRemainDays(state);
     $('monthlyChip').hidden = remain <= 0;
     if (remain > 0) $('monthlyChip').textContent = '月卡 ' + remain + ' 天';
+    const ach = window.Achievements.summary(state);
+    const badge = $('achBadge');
+    if (badge) {
+      badge.textContent = ach.count + '/' + ach.total;
+      badge.classList.toggle('full', ach.count === ach.total);
+    }
   }
 
   function renderTabs(state) {
@@ -353,6 +359,64 @@ window.UI = (function () {
     return (
       '<p class="book-head">已收集 <b>' + ownedCount + '</b> / ' + total +
       '　·　全部角色与物品均为《不想上班》原创内容</p>' + sections
+    );
+  }
+
+  function achievementsHTML(state) {
+    const A = window.Achievements;
+    const m = A.metrics(state);
+    const sum = A.summary(state);
+    const unlocked = state.ach.unlocked || {};
+    const pctDone = sum.total ? (sum.count / sum.total) * 100 : 0;
+
+    const groups = [];
+    D.ACHIEVEMENTS.forEach(function (a) {
+      if (groups.indexOf(a.group) === -1) groups.push(a.group);
+    });
+
+    const sections = groups.map(function (group) {
+      const list = D.ACHIEVEMENTS.filter(function (a) {
+        return a.group === group;
+      });
+      const got = list.filter(function (a) {
+        return unlocked[a.id];
+      }).length;
+      const rows = list.map(function (ach) {
+        const p = A.progress(ach, m);
+        const done = !!unlocked[ach.id];
+        const valueText =
+          ach.op === 'lte'
+            ? p.value > 0
+              ? p.value + ' / ' + p.target + ' 抽内'
+              : '--'
+            : Math.min(p.value, p.target) + ' / ' + p.target;
+        return (
+          '<li class="ach' + (done ? ' done' : '') + '">' +
+          '<div class="ach-mark">' + (done ? '🏆' : '·') + '</div>' +
+          '<div class="ach-main">' +
+          '<div class="ach-title"><b>' + esc(ach.name) + '</b>' +
+          '<span class="ach-points">+' + ach.points + ' 点</span>' +
+          '<span class="ach-gain">¥' + fmt(ach.reward) + '</span></div>' +
+          '<div class="ach-desc">' + esc(ach.desc) + '</div>' +
+          '<div class="ach-bar"><i style="width:' + (done ? 100 : p.ratio * 100).toFixed(1) + '%"></i></div>' +
+          '<div class="ach-progress">' + esc(valueText) + (done ? ' · 已达成' : '') + '</div>' +
+          '</div></li>'
+        );
+      }).join('');
+      return (
+        '<h3 class="sub">' + esc(group) + '<span class="muted"> ' + got + ' / ' + list.length + '</span></h3>' +
+        '<ul class="ach-list">' + rows + '</ul>'
+      );
+    }).join('');
+
+    return (
+      '<div class="ach-summary">' +
+      '<div><span class="muted">成就点</span><b>' + fmt(sum.points) + '</b>' +
+      '<span class="muted"> / ' + fmt(sum.maxPoints) + '</span></div>' +
+      '<div><span class="muted">已达成</span><b>' + sum.count + '</b><span class="muted"> / ' + sum.total + '</span></div>' +
+      '</div>' +
+      '<div class="ach-overall"><i style="width:' + pctDone.toFixed(1) + '%"></i></div>' +
+      sections
     );
   }
 
@@ -719,6 +783,7 @@ window.UI = (function () {
     isModalOpen: isModalOpen,
     statsHTML: statsHTML,
     bookHTML: bookHTML,
+    achievementsHTML: achievementsHTML,
     shopHTML: shopHTML,
     settingsHTML: settingsHTML,
     confirmHTML: confirmHTML,

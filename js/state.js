@@ -37,6 +37,17 @@ window.SaveState = (function () {
       workCount: 0,
       spendCurrency: 0,
       skipAnim: false,
+      stats: {
+        singlePulls: 0,
+        tenPulls: 0,
+        maxFiveInTen: 0,
+        bestPity: 0,
+        hardPityCount: 0,
+        loseStreak: 0,
+        maxLoseStreak: 0,
+        upFiveCount: 0,
+      },
+      ach: { unlocked: {}, points: 0 },
       topup: {
         total: 0,
         tiers: {},
@@ -56,6 +67,9 @@ window.SaveState = (function () {
     });
     merged.topup = Object.assign(base.topup, raw.topup || {});
     merged.topup.monthly = Object.assign(base.topup.monthly, (raw.topup && raw.topup.monthly) || {});
+    merged.stats = Object.assign(base.stats, raw.stats || {});
+    merged.ach = Object.assign(base.ach, raw.ach || {});
+    merged.ach.unlocked = Object.assign({}, (raw.ach && raw.ach.unlocked) || {});
     if (typeof merged.currency !== 'number' || isNaN(merged.currency)) merged.currency = CONFIG.startCurrency;
     if (!merged.pools[merged.activePool]) merged.activePool = POOLS[0].id;
     return merged;

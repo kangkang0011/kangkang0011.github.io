@@ -9,10 +9,44 @@
   const G = window.Gacha;
   const S = window.SaveState;
   const UI = window.UI;
+  const A = window.Achievements;
 
   let state = S.load();
   let busy = false;
   let modalReturn = null;
+  let toastQueue = [];
+  let toastTimer = null;
+
+  /** 提示排队：抽卡与成就可能同时达成，避免后一条把前一条覆盖掉 */
+  function say(message, tone) {
+    toastQueue.push({ message: message, tone: tone || '' });
+    pumpToasts();
+  }
+
+  function pumpToasts() {
+    if (toastTimer || !toastQueue.length) return;
+    const item = toastQueue.shift();
+    UI.toast(item.message, item.tone);
+    toastTimer = setTimeout(function () {
+      toastTimer = null;
+      pumpToasts();
+    }, 2400);
+  }
+
+  function notifyAch(list) {
+    if (!list.length) return;
+    // 一次解锁很多项时（例如老存档首次进入），合并成一条提示
+    if (list.length > 2) {
+      const total = list.reduce(function (n, a) {
+        return n + a.reward;
+      }, 0);
+      say('达成 ' + list.length + ' 项成就（+' + UI.fmt(total) + ' 工资），点 🏆 查看', 'gold');
+      return;
+    }
+    list.forEach(function (a) {
+      say('成就达成：' + a.name + '（+' + UI.fmt(a.reward) + ' 工资）', 'gold');
+    });
+  }
 
   function persist() {
     S.save(state);
@@ -33,15 +67,22 @@
     const pool = activePool();
     const cost = times === 1 ? C.pullCost.single : C.pullCost.ten;
     if (state.currency < cost) {
-      UI.toast('工资不够了：点「上个班」白嫖，或者去「充值」', 'warn');
+      say('工资不够了：点「上个班」白嫖，或者去「充值」', 'warn');
       return;
     }
 
     S.spend(state, cost);
-    const results = G.pullMany(pool, state.pools[pool.id], times);
+    const results = G.pullMany(pool, state.pools[pool.id], times, state.stats);
     results.forEach(function (r) {
       r.isNew = S.own(state, r.item.id);
     });
+    if (times === 10) state.stats.tenPulls += 1;
+    if (times === 1) state.stats.singlePulls += 1;
+    const fivesInBatch = results.filter(function (r) {
+      return r.rarity === 5;
+    }).length;
+    if (fivesInBatch > state.stats.maxFiveInTen) state.stats.maxFiveInTen = fivesInBatch;
+    const unlocked = A.check(state);
     persist();
     refresh();
 
@@ -53,13 +94,14 @@
         return r.rarity === 5;
       });
       if (fives.length) {
-        UI.toast(
+        say(
           '获得五星：' + fives.map(function (f) {
             return f.item.name + (f.isUp ? '（UP）' : '');
           }).join('、'),
           'gold'
         );
       }
+      notifyAch(unlocked);
     });
   }
 
@@ -83,6 +125,11 @@
   function openSettings() {
     modalReturn = null;
     UI.openModal('设置', UI.settingsHTML(state));
+  }
+
+  function openAchievements() {
+    modalReturn = null;
+    UI.openModal('成就', UI.achievementsHTML(state));
   }
 
   function handleShopClick(target) {
@@ -139,22 +186,26 @@
           return t.id === confirmBtn.getAttribute('data-id');
         })[0];
         const res = S.buyTier(state, tier);
+        const unlocked = A.check(state);
         persist();
         refresh();
         openShop();
-        UI.toast('充值成功 +' + UI.fmt(res.gained) + ' 工资' + (res.first ? '（首充双倍）' : ''), 'gold');
+        say('充值成功 +' + UI.fmt(res.gained) + ' 工资' + (res.first ? '（首充双倍）' : ''), 'gold');
+        notifyAch(unlocked);
       } else if (kind === 'monthly') {
         const gained = S.buyMonthly(state);
+        const unlocked = A.check(state);
         persist();
         refresh();
         openShop();
-        UI.toast('月卡开通成功 +' + UI.fmt(gained) + ' 工资', 'gold');
+        say('月卡开通成功 +' + UI.fmt(gained) + ' 工资', 'gold');
+        notifyAch(unlocked);
       } else if (kind === 'reset') {
         state = S.reset();
         persist();
         refresh();
         UI.closeModal();
-        UI.toast('存档已重置', 'warn');
+        say('存档已重置', 'warn');
       }
       return true;
     }
@@ -181,7 +232,7 @@
         a.download = 'buxiangshangban-save.json';
         a.click();
         URL.revokeObjectURL(url);
-        UI.toast('存档已导出');
+        say('存档已导出');
       } else if (kind === 'reset') {
         UI.openModal(
           '确认重置',
@@ -207,9 +258,9 @@
         persist();
         refresh();
         UI.closeModal();
-        UI.toast('存档导入成功');
+        say('存档导入成功');
       } catch (err) {
-        UI.toast('存档文件无法解析', 'warn');
+        say('存档文件无法解析', 'warn');
       }
     };
     reader.readAsText(file);
@@ -228,12 +279,15 @@
     UI.$('btnWork').addEventListener('click', function () {
       state.currency += C.workReward;
       state.workCount += 1;
+      const unlocked = A.check(state);
       persist();
       refresh();
-      UI.toast('上班 30 秒，到账 ' + UI.fmt(C.workReward) + ' 工资');
+      say('上班 30 秒，到账 ' + UI.fmt(C.workReward) + ' 工资');
+      notifyAch(unlocked);
     });
 
     UI.$('btnShop').addEventListener('click', openShop);
+    UI.$('btnAch').addEventListener('click', openAchievements);
     UI.$('btnStats').addEventListener('click', openStats);
     UI.$('btnBook').addEventListener('click', openBook);
     UI.$('btnSettings').addEventListener('click', openSettings);
@@ -300,9 +354,11 @@
   function init() {
     const gained = S.claimMonthly(state);
     bind();
+    const unlocked = A.check(state);
     refresh();
     persist();
-    if (gained) UI.toast('月卡每日工资 +' + UI.fmt(gained), 'gold');
+    if (gained) say('月卡每日工资 +' + UI.fmt(gained), 'gold');
+    notifyAch(unlocked);
     if (state.topup.monthly.active && !gained) {
       /* 今天已经领过，静默 */
     }
