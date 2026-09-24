@@ -440,20 +440,47 @@ window.UI = (function () {
 
   /* ---------------- 抽卡演出 ---------------- */
 
-  let pullResolve = null;
-  let pullTimers = [];
+  const pull = {
+    timers: [],
+    results: null,
+    opts: {},
+    phase: 'idle',
+    spotIndex: -1,
+    layer: null,
+    pop: null,
+    resolve: null,
+  };
+
+  // 演出节奏：五星更慢更隆重，四星稍快
+  const TIMING = {
+    5: { burst: 1700, burstFast: 200, hold: 950, fly: 780, big: 430, maxHeightRatio: 0.92 },
+    4: { burst: 760, burstFast: 120, hold: 620, fly: 600, big: 320, maxHeightRatio: 0.78 },
+  };
 
   function clearPullTimers() {
-    pullTimers.forEach(function (t) {
+    pull.timers.forEach(function (t) {
       clearTimeout(t);
     });
-    pullTimers = [];
+    pull.timers = [];
+  }
+
+  function slotAt(index) {
+    return document.querySelector('#pullStage .rcard-slot[data-i="' + index + '"]');
+  }
+
+  function pickSpotlight(results) {
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].rarity === 5) return i;
+    }
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].rarity === 4) return i;
+    }
+    return -1;
   }
 
   function playPull(results, options) {
     const opts = options || {};
     const overlay = $('pullOverlay');
-    const stage = $('pullStage');
     const maxRarity = results.reduce(function (m, r) {
       return Math.max(m, r.rarity);
     }, 3);
@@ -464,55 +491,200 @@ window.UI = (function () {
       return r.rarity === 4;
     }).length;
 
+    clearPullTimers();
+    pull.results = results;
+    pull.opts = opts;
+    pull.phase = 'burst';
+    pull.spotIndex = -1;
+    pull.layer = null;
+    pull.pop = null;
+
     overlay.hidden = false;
     overlay.className = 'overlay show r' + maxRarity;
     document.body.classList.add('no-scroll');
-    stage.innerHTML = '<div class="burst"><span class="burst-core"></span>' +
+    $('pullStage').innerHTML =
+      '<div class="burst"><span class="burst-core"></span>' +
       '<span class="burst-ring"></span><span class="burst-ring d2"></span>' +
       '<span class="burst-rays"></span></div>' +
-      '<div class="burst-text">' + (five ? '金 光 乍 现' : four ? '紫色微光' : '微 光') + '</div>';
+      '<div class="burst-text">' + (five ? '金 光 乍 现' : four ? '紫 色 微 光' : '微 光') + '</div>';
     $('pullSkip').hidden = false;
     $('pullContinue').hidden = true;
+    $('pullSkip').onclick = skipCurrent;
 
     return new Promise(function (resolve) {
-      pullResolve = function () {
-        resolve();
-      };
-      let revealed = false;
-      const reveal = function () {
-        if (revealed) return;
-        revealed = true;
-        clearPullTimers();
-        renderPullResults(results);
-      };
-      const duration = maxRarity === 5 ? (opts.fast ? 260 : 1700) : opts.fast ? 120 : 760;
-      pullTimers.push(setTimeout(reveal, duration));
-      $('pullSkip').onclick = reveal;
+      pull.resolve = resolve;
+      const t = TIMING[maxRarity] || TIMING[4];
+      pull.timers.push(setTimeout(toReveal, opts.fast ? t.burstFast : t.burst));
     });
   }
 
-  function renderPullResults(results) {
-    const stage = $('pullStage');
+  function buildGrid(results) {
     const many = results.length > 1;
-    stage.innerHTML =
+    $('pullStage').innerHTML =
       '<div class="result-wrap ' + (many ? 'ten' : 'one') + '">' +
       results.map(function (r, i) {
-        return '<div class="rcard-slot" style="animation-delay:' + i * 70 + 'ms">' + resultCard(r, i) + '</div>';
+        return '<div class="rcard-slot pending" data-i="' + i + '">' + resultCard(r, i) + '</div>';
       }).join('') +
-      '</div>' +
-      '<div class="result-tip">' + (many ? '十连结果 · 点击继续' : '单抽结果 · 点击继续') + '</div>';
+      '</div>';
+  }
+
+  function toReveal() {
+    if (pull.phase !== 'burst') return;
+    clearPullTimers();
+    buildGrid(pull.results);
+
+    const rarest = pickSpotlight(pull.results);
+    if (pull.opts.fast || rarest < 0) {
+      revealAll();
+      completeReveal();
+      return;
+    }
+    startSpotlight(rarest);
+  }
+
+  function revealAll() {
+    const slots = document.querySelectorAll('#pullStage .rcard-slot');
+    slots.forEach(function (slot, i) {
+      slot.classList.remove('pending');
+      slot.style.animationDelay = i * 70 + 'ms';
+      slot.classList.add('in');
+    });
+    pull.phase = 'reveal';
+  }
+
+  function revealRest(exceptIndex) {
+    const slots = document.querySelectorAll('#pullStage .rcard-slot');
+    let k = 0;
+    slots.forEach(function (slot, i) {
+      if (i === exceptIndex) return;
+      slot.classList.remove('pending');
+      slot.style.animationDelay = k * 70 + 'ms';
+      slot.classList.add('in');
+      k += 1;
+    });
+    return k;
+  }
+
+  /**
+   * 稀有卡放大演出：
+   * 先把卡片按「结果格」的尺寸与位置渲染在遮罩层里，
+   * 再用 transform 放大并移到屏幕中央；随后把 transform 归零，
+   * 卡片就会平滑缩回结果格，落点与真实格子完全重合。
+   */
+  function startSpotlight(index) {
+    const slot = slotAt(index);
+    if (!slot) {
+      revealAll();
+      completeReveal();
+      return;
+    }
+    const rarity = pull.results[index].rarity;
+    const t = TIMING[rarity] || TIMING[4];
+    // 以卡片自身（而不是格子）的矩形为目标：格子在网格里会被拉伸，
+    // 用它会导致落地时高度差几个像素。
+    const target = (slot.querySelector('.rcard') || slot).getBoundingClientRect();
+
+    // 放大倍数同时受「期望宽度」和「视口剩余空间」约束，避免超大卡被裁切
+    const maxWidth = Math.min(t.big, window.innerWidth * 0.86);
+    const maxHeight = window.innerHeight * (t.maxHeightRatio || 0.86);
+    let scale = Math.min(t.big / target.width, maxWidth / target.width, maxHeight / target.height);
+    scale = Math.max(1.05, Math.min(3.2, scale));
+    const offsetX = window.innerWidth / 2 - (target.left + target.width / 2);
+    const offsetY = window.innerHeight / 2 - (target.top + target.height / 2);
+
+    const layer = document.createElement('div');
+    layer.className = 'spotlight-layer r' + rarity;
+    const pop = document.createElement('div');
+    pop.className = 'hero-pop';
+    pop.style.width = target.width + 'px';
+    pop.style.left = target.left + 'px';
+    pop.style.top = target.top + 'px';
+    pop.style.transform = 'translate(' + offsetX.toFixed(1) + 'px,' + offsetY.toFixed(1) + 'px) scale(' + scale.toFixed(4) + ')';
+
+    const hero = slot.querySelector('.rcard').cloneNode(true);
+    hero.classList.add('rcard-hero');
+    pop.appendChild(hero);
+    layer.appendChild(pop);
+    $('pullOverlay').appendChild(layer);
+
+    pull.phase = 'spotlight';
+    pull.spotIndex = index;
+    pull.layer = layer;
+    pull.pop = pop;
+    pull.timers.push(setTimeout(flyToSlot, pull.opts.fast ? 60 : t.hold));
+  }
+
+  function flyToSlot() {
+    if (pull.phase !== 'spotlight') return;
+    if (!pull.pop) {
+      finishSpotlight();
+      return;
+    }
+    const rarity = pull.results[pull.spotIndex].rarity;
+    const t = TIMING[rarity] || TIMING[4];
+    pull.phase = 'flying';
+    pull.pop.style.transition = 'transform ' + t.fly + 'ms cubic-bezier(0.22, 0.85, 0.24, 1)';
+    pull.pop.style.transform = 'translate(0px, 0px) scale(1)';
+    pull.timers.push(setTimeout(finishSpotlight, t.fly + 30));
+  }
+
+  function finishSpotlight() {
+    if (pull.phase !== 'spotlight' && pull.phase !== 'flying') return;
+    clearPullTimers();
+    if (pull.layer) {
+      pull.layer.remove();
+      pull.layer = null;
+      pull.pop = null;
+    }
+    const slot = slotAt(pull.spotIndex);
+    if (slot) {
+      slot.classList.remove('pending');
+      slot.classList.add('landed');
+    }
+    pull.phase = 'reveal';
+    const rest = revealRest(pull.spotIndex);
+    pull.timers.push(setTimeout(completeReveal, 180 + rest * 70));
+  }
+
+  function completeReveal() {
+    clearPullTimers();
+    pull.phase = 'done';
+    const stage = $('pullStage');
+    if (!stage.querySelector('.result-tip')) {
+      const tip = document.createElement('div');
+      tip.className = 'result-tip';
+      tip.textContent = (pull.results.length > 1 ? '十连结果' : '单抽结果') + ' · 点击继续';
+      stage.appendChild(tip);
+    }
     $('pullSkip').hidden = true;
     $('pullContinue').hidden = false;
   }
 
+  /** 跳过：分阶段推进，而不是一步到底，避免动画中间出现跳变 */
+  function skipCurrent() {
+    if (pull.phase === 'burst') {
+      toReveal();
+    } else if (pull.phase === 'spotlight' || pull.phase === 'flying') {
+      finishSpotlight();
+    } else if (pull.phase === 'reveal') {
+      completeReveal();
+    }
+  }
+
   function endPull() {
     clearPullTimers();
+    if (pull.layer) {
+      pull.layer.remove();
+      pull.layer = null;
+      pull.pop = null;
+    }
+    pull.phase = 'idle';
     $('pullOverlay').hidden = true;
     $('pullOverlay').className = 'overlay';
     document.body.classList.remove('no-scroll');
-    if (pullResolve) {
-      const fn = pullResolve;
-      pullResolve = null;
+    if (pull.resolve) {
+      const fn = pull.resolve;
+      pull.resolve = null;
       fn();
     }
   }
