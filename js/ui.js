@@ -482,7 +482,8 @@ window.UI = (function () {
       '<button class="btn danger-btn" data-action="reset">重置</button>' +
       '</div>' +
       '<div class="setting-row">' +
-      '<div><strong>关于</strong><p class="muted">《不想上班》打工人抽卡模拟器 · 全部角色、物品与文案均为原创，' +
+      '<div><strong>关于</strong><p class="muted">《不想上班》打工人抽卡模拟器 v' + esc(C.version) +
+      ' · 全部角色、物品与文案均为原创，' +
       '与任何真实游戏、公司及人物无关。</p></div>' +
       '</div>'
     );

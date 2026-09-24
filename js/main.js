@@ -269,14 +269,19 @@
   /* ---------------- 事件绑定 ---------------- */
 
   function bind() {
-    UI.$('btnPull1').addEventListener('click', function () {
+    const on = function (id, event, handler) {
+      const el = UI.$(id);
+      if (el) el.addEventListener(event, handler);
+    };
+
+    on('btnPull1', 'click', function () {
       doPull(1);
     });
-    UI.$('btnPull10').addEventListener('click', function () {
+    on('btnPull10', 'click', function () {
       doPull(10);
     });
 
-    UI.$('btnWork').addEventListener('click', function () {
+    on('btnWork', 'click', function () {
       state.currency += C.workReward;
       state.workCount += 1;
       const unlocked = A.check(state);
@@ -286,13 +291,13 @@
       notifyAch(unlocked);
     });
 
-    UI.$('btnShop').addEventListener('click', openShop);
-    UI.$('btnAch').addEventListener('click', openAchievements);
-    UI.$('btnStats').addEventListener('click', openStats);
-    UI.$('btnBook').addEventListener('click', openBook);
-    UI.$('btnSettings').addEventListener('click', openSettings);
+    on('btnShop', 'click', openShop);
+    on('btnAch', 'click', openAchievements);
+    on('btnStats', 'click', openStats);
+    on('btnBook', 'click', openBook);
+    on('btnSettings', 'click', openSettings);
 
-    UI.$('poolTabs').addEventListener('click', function (ev) {
+    on('poolTabs', 'click', function (ev) {
       const tab = ev.target.closest('[data-pool]');
       if (!tab) return;
       state.activePool = tab.getAttribute('data-pool');
@@ -300,8 +305,8 @@
       refresh();
     });
 
-    UI.$('modalClose').addEventListener('click', UI.closeModal);
-    UI.$('modal').addEventListener('click', function (ev) {
+    on('modalClose', 'click', UI.closeModal);
+    on('modal', 'click', function (ev) {
       if (ev.target === UI.$('modal')) {
         UI.closeModal();
         return;
@@ -321,18 +326,19 @@
       handleSettingsClick(target);
     });
 
-    UI.$('modal').addEventListener('change', function (ev) {
+    on('modal', 'change', function (ev) {
       if (ev.target && ev.target.id === 'importFile' && ev.target.files[0]) {
         handleImport(ev.target.files[0]);
       }
     });
 
-    UI.$('pullOverlay').addEventListener('click', function (ev) {
-      if (ev.target.closest('#pullSkip')) return;
-      if (UI.$('pullContinue').hidden) return;
+    on('pullOverlay', 'click', function (ev) {
+      if (ev.target.closest && ev.target.closest('#pullSkip')) return;
+      const cont = UI.$('pullContinue');
+      if (!cont || cont.hidden) return;
       UI.endPull();
     });
-    UI.$('pullContinue').addEventListener('click', function (ev) {
+    on('pullContinue', 'click', function (ev) {
       ev.stopPropagation();
       UI.endPull();
     });
@@ -354,6 +360,10 @@
   function init() {
     const gained = S.claimMonthly(state);
     bind();
+    // 静态站点容易被浏览器缓存出「新旧脚本混用」，这里兜底提示一次
+    if (document.body.getAttribute('data-version') && document.body.getAttribute('data-version') !== C.version) {
+      say('页面资源版本不一致，请按 Ctrl+F5 强制刷新一次', 'warn');
+    }
     const unlocked = A.check(state);
     refresh();
     persist();
