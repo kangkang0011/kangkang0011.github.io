@@ -296,7 +296,7 @@ window.GameData = (function () {
   };
 
   const CONFIG = {
-    version: '1.1.7',
+    version: '1.1.8',
     title: '不想上班',
     subtitle: '打工人抽卡模拟器',
     currencyName: '工资',

@@ -199,7 +199,9 @@ window.Fish = (function () {
     d += '<path d="M' + (cx + rx - 3) + ' ' + (cy + 5) + ' q6 3 2 7" stroke="' + s.c2 + '" stroke-width="2" fill="none" stroke-linecap="round"/>';
 
     const defs =
-      '<defs><radialGradient id="' + uid + '_g"><stop offset="0" stop-color="#fffbe0"/><stop offset="1" stop-color="#ffe08a" stop-opacity="0"/></radialGradient></defs>';
+      s.glow
+        ? '<defs><radialGradient id="' + uid + '_g"><stop offset="0" stop-color="#fffbe0"/><stop offset="1" stop-color="#ffe08a" stop-opacity="0"/></radialGradient></defs>'
+        : '';
     return '<svg viewBox="0 0 130 70" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + s.name + '">' + defs + d + '</svg>';
   }
 
@@ -232,12 +234,11 @@ window.Fish = (function () {
       dur: +(rand(24, 50) / depth).toFixed(1),
       delay: -rand(0, 50).toFixed(1),
       bob: +rand(2.2, 5.4).toFixed(2),
-      wig: +rand(0.7, 1.6).toFixed(2),
       op: +Math.max(0.14, Math.min(0.62, rand(0.22, 0.5) * (0.6 + depth * 0.5))).toFixed(2),
-      blur: depth < 0.82 ? +rand(0.5, 1.7).toFixed(2) : 0,
       tilt: +rand(-7, 7).toFixed(1),
       dash: Math.random() < 0.28,
-      tint: tintOf(sp, rand(-42, 42), rand(0.72, 1.3), rand(0.86, 1.14)),
+      // 远景不再用模糊（逐帧模糊很贵），改用压暗 + 缩小 + 降低透明度体现纵深
+      tint: tintOf(sp, rand(-42, 42), rand(0.72, 1.3), (0.6 + depth * 0.34) * rand(0.94, 1.08)),
       shape: { tailScale: +rand(0.85, 1.25).toFixed(2), stripeGap: Math.round(rand(5, 11)) },
     };
   }
@@ -253,12 +254,10 @@ window.Fish = (function () {
     el.style.setProperty('--dur', cfg.dur + 's');
     el.style.setProperty('--delay', cfg.delay + 's');
     el.style.setProperty('--bob', cfg.bob + 's');
-    el.style.setProperty('--wig', cfg.wig + 's');
     el.style.setProperty('--op', cfg.op);
     el.style.setProperty('--dir', cfg.dir);
     el.style.setProperty('--size', cfg.size + 'px');
     el.style.setProperty('--tilt', cfg.tilt + 'deg');
-    if (cfg.blur) el.style.filter = 'blur(' + cfg.blur + 'px)';
     el.innerHTML =
       '<div class="fish-move"><div class="fish-bob"><div class="fish-flip"><div class="fish-art">' +
       buildSVG(cfg.species, cfg.tint, cfg.shape) +
@@ -363,6 +362,7 @@ window.Fish = (function () {
 
     hunter.busy = true;
     hunter.el.style.setProperty('--dir', face);
+    move.classList.add('moving');
     move.style.transition = 'transform ' + chaseMs + 'ms cubic-bezier(0.45, 0, 0.7, 1)';
     move.style.transform =
       'translate(' + (targetX - h.x).toFixed(1) + 'px,' + (targetY - h.y).toFixed(1) + 'px) scale(' + hunter.grow.toFixed(3) + ')';
@@ -385,6 +385,7 @@ window.Fish = (function () {
       move.style.transform = restTransform(hunter);
       setTimeout(function () {
         hunter.el.style.removeProperty('--dir');
+        move.classList.remove('moving');
         hunter.busy = false;
       }, 660);
 
@@ -420,7 +421,9 @@ window.Fish = (function () {
     items = [];
     eatenCount = 0;
     host.innerHTML = '';
-    const total = Math.max(10, count || 12);
+    // 低配设备少放两条，减少合成压力（仍满足最少 10 条）
+    const lowEnd = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
+    const total = Math.max(10, count ? (lowEnd ? count - 2 : count) : 12);
     for (let i = 0; i < total; i++) addFish();
     syncStats();
     scheduleHunt();
